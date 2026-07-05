@@ -27,7 +27,7 @@ export function useAchievements() {
   return useQuery<Achievement[]>({
     queryKey: ['portfolio', 'achievements'],
     queryFn: async () => {
-      const { data: res } = await apiClient.get(API_ENDPOINTS.PORTFOLIO.ACHIEVEMENTS);
+      const { data: res } = await apiClient.get(API_ENDPOINTS.ACHIEVEMENTS.BASE);
       return res.data || res;
     },
   });
@@ -37,8 +37,14 @@ export function usePortfolioAnalytics() {
   return useQuery({
     queryKey: ['portfolio', 'analytics'],
     queryFn: async () => {
-      const { data: res } = await apiClient.get(API_ENDPOINTS.PORTFOLIO.ANALYTICS);
-      return res.data || res;
+      const { data: res } = await apiClient.get(API_ENDPOINTS.DASHBOARD.STUDENT);
+      const data = res.data || res;
+      return {
+        totalSessions: data.stats?.totalSessions || 0,
+        averageAuthenticity: data.stats?.averageConfidence || 0,
+        conceptsMastered: data.stats?.masteredConcepts || 0,
+        currentStreak: data.streak || 0,
+      };
     },
   });
 }

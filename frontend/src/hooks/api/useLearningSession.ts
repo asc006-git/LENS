@@ -28,21 +28,11 @@ export function useCreateSession() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (sessionData: {
-      courseId: string;
-      title: string;
-      description: string;
-      assignmentContent: string;
-      learningObjective: string;
-      aiConfig: {
-        difficulty: string;
-        learningStyle: string;
-        timeEstimate: number;
-        adaptiveDifficulty: boolean;
-      };
+      course?: string;
+      learningObjective?: string;
     }) => {
       const { data: res } = await apiClient.post(API_ENDPOINTS.SESSIONS.BASE, sessionData);
-      const result = res.data || res;
-      return result;
+      return res?.data || res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });

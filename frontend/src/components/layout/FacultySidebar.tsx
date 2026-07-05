@@ -1,19 +1,13 @@
-import { NavLink } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  BarChart3,
-  Lightbulb,
-  FileText,
-  Settings,
-  GraduationCap,
+  LayoutDashboard, BookOpen, BarChart3, Lightbulb, FileText,
+  Settings, Sparkles, LogOut, ChevronLeft, ChevronRight, GraduationCap
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 
 const navItems = [
-  { to: '/faculty/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/faculty/dashboard', label: 'Faculty Dashboard', icon: LayoutDashboard },
   { to: '/faculty/courses', label: 'Courses', icon: BookOpen },
   { to: '/faculty/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/faculty/interventions', label: 'Interventions', icon: Lightbulb },
@@ -22,53 +16,76 @@ const navItems = [
 ];
 
 export default function FacultySidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-secondary-100 flex flex-col z-30">
-      <div className="p-6 border-b border-secondary-100">
+    <aside className={`fixed left-0 top-0 h-full bg-lens-navy border-r border-white/5 flex flex-col z-30 transition-all duration-300 ${
+      collapsed ? 'w-[72px]' : 'w-64'
+    }`}>
+      {/* Logo */}
+      <div className="p-4 border-b border-white/5">
         <NavLink to="/faculty/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-secondary-900 rounded-xl flex items-center justify-center">
-            <GraduationCap size={22} className="text-white" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sage-500 to-teal-500 flex items-center justify-center shrink-0 shadow-glow-emerald">
+            <GraduationCap className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-secondary-900">LENS</h1>
-            <p className="text-xs text-secondary-500">Faculty Portal</p>
-          </div>
+          {!collapsed && (
+            <div className="animate-fade-in">
+              <h1 className="text-lg font-bold text-white leading-tight">LENS</h1>
+              <p className="text-[10px] text-stone-500 leading-tight">Faculty Portal</p>
+            </div>
+          )}
         </NavLink>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      {/* Nav Items */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink key={item.to} to={item.to}>
             {({ isActive }) => (
-              <motion.div
-                whileHover={{ x: 4 }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-button text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-secondary-900 text-white'
-                    : 'text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900'
-                }`}
-              >
-                <item.icon size={18} />
-                {item.label}
-              </motion.div>
+              <div className={`sidebar-link ${isActive ? 'active !bg-emerald-500/12 !text-sage-500' : ''} ${collapsed ? 'justify-center !px-3' : ''}`}
+                title={collapsed ? item.label : undefined}>
+                <item.icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? '!text-emerald-500' : ''}`} />
+                {!collapsed && <span>{item.label}</span>}
+              </div>
             )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-secondary-100">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-secondary-200 flex items-center justify-center text-secondary-700 font-medium text-sm">
+      {/* Collapse Toggle */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="mx-3 mb-2 p-2 rounded-lg text-stone-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center"
+      >
+        {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </button>
+
+      {/* User Card */}
+      <div className="p-3 border-t border-white/5">
+        <div className={`flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors ${collapsed ? 'justify-center' : ''}`}>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sage-500 to-teal-500 flex items-center justify-center text-white text-sm font-semibold shrink-0">
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-secondary-900 truncate">
-              {user?.firstName} {user?.lastName}
-            </p>
-            <p className="text-xs text-secondary-500 truncate">{user?.department}</p>
-          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0 animate-fade-in">
+              <p className="text-sm font-medium text-white truncate">
+                {user?.firstName} {user?.lastName}
+              </p>
+              <p className="text-[11px] text-stone-500 truncate">{user?.department || 'Department'}</p>
+            </div>
+          )}
+          {!collapsed && (
+            <button onClick={handleLogout} className="p-1.5 rounded-lg text-stone-500 hover:text-terracotta-500 hover:bg-terracotta-500/10 transition-colors" title="Logout">
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </aside>

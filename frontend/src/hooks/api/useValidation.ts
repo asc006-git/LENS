@@ -18,7 +18,7 @@ export function useStartValidation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      const { data: res } = await apiClient.post(API_ENDPOINTS.VALIDATIONS.START(sessionId));
+      const { data: res } = await apiClient.post(`${API_ENDPOINTS.SESSIONS.VALIDATION(sessionId)}/start`);
       return res.data || res;
     },
     onSuccess: (_data, sessionId) => {

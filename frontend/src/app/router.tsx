@@ -25,6 +25,7 @@ import Reports from '@/pages/student/Reports';
 import AIMentor from '@/pages/student/AIMentor';
 import Achievements from '@/pages/student/Achievements';
 import StudentSettings from '@/pages/student/Settings';
+import ReflectionNotebook from '@/pages/student/ReflectionNotebook';
 
 import FacultyDashboard from '@/pages/faculty/Dashboard';
 import CourseIntelligence from '@/pages/faculty/CourseIntelligence';
@@ -119,6 +120,10 @@ export const router = createBrowserRouter([
   {
     path: '/student/settings',
     element: <AuthGuard><RoleGuard allowedRoles={['student']}><StudentLayout><StudentSettings /></StudentLayout></RoleGuard></AuthGuard>,
+  },
+  {
+    path: '/student/reflection',
+    element: <AuthGuard><RoleGuard allowedRoles={['student']}><StudentLayout><ReflectionNotebook /></StudentLayout></RoleGuard></AuthGuard>,
   },
   {
     path: '/faculty',

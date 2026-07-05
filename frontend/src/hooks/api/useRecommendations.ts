@@ -26,15 +26,4 @@ export function useAcceptRecommendation() {
   });
 }
 
-export function useDismissRecommendation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { data: res } = await apiClient.post(API_ENDPOINTS.RECOMMENDATIONS.DISMISS(id));
-      return res.data || res;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recommendations'] });
-    },
-  });
-}
+

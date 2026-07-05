@@ -36,6 +36,7 @@ export interface RegisterData {
 
 export interface LearningSession {
   id: string;
+  _id?: string;
   userId: string;
   courseId: string;
   courseName: string;
@@ -43,12 +44,25 @@ export interface LearningSession {
   description: string;
   assignmentContent: string;
   learningObjective: string;
-  status: 'uploading' | 'analyzing' | 'blueprint_ready' | 'validating' | 'reflecting' | 'completed' | 'failed';
+  status: string;
   blueprint?: Blueprint;
   validation?: Validation;
   reflection?: Reflection;
   report?: Report;
   aiConfig: AIConfig;
+  aiAnalysis?: {
+    concepts: Array<{ name: string; difficulty: number; bloomLevel?: string; prerequisites?: string[] }>;
+    topicClassification?: string;
+    difficultyEstimate?: number;
+    learningObjectives?: string[];
+    writingFlowNote?: string;
+  };
+  sessionState?: {
+    currentStage: string;
+    completionPercentage: number;
+    lastActiveTime?: string;
+    resumePoint?: string;
+  };
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -65,10 +79,11 @@ export interface Blueprint {
   id: string;
   sessionId: string;
   concepts: Concept[];
-  learningObjectives: string[];
+  learningGoals?: string[];
+  learningObjectives?: string[];
   difficulty: string;
   estimatedTime: number;
-  conceptGraph: ConceptGraph;
+  conceptGraph?: ConceptGraph;
   createdAt: string;
 }
 
@@ -77,6 +92,8 @@ export interface Concept {
   name: string;
   description: string;
   difficulty: number;
+  weight?: number;
+  order?: number;
   prerequisites: string[];
   mastery: number;
   status: 'discovered' | 'learning' | 'validated' | 'mastered';
@@ -104,6 +121,7 @@ export interface GraphEdge {
 export interface Validation {
   id: string;
   sessionId: string;
+  startedAt?: string;
   questions: ValidationQuestion[];
   currentQuestionIndex: number;
   responses: ValidationResponse[];
@@ -225,6 +243,22 @@ export interface Portfolio {
   reflectionLibrary: ReflectionEntry[];
   achievements: Achievement[];
   analytics: PortfolioAnalytics;
+  student?: { id: string; name: string; email: string };
+  stats?: {
+    totalSessions: number;
+    totalConcepts: number;
+    averageConfidence: number;
+    totalStudyTime: number;
+    streak?: number;
+  };
+  conceptMastery?: Record<string, number>;
+  recentSessions?: Array<{
+    id: string;
+    learningObjective: string;
+    status: string;
+    confidence: number;
+    completedAt: string;
+  }>;
 }
 
 export interface LearningDNA {
@@ -353,6 +387,13 @@ export interface Course {
   averageAuthenticity: number;
   conceptMastery: number;
   createdAt: string;
+  flaggedSessions?: Array<{
+    id: string;
+    studentName: string;
+    learningObjective: string;
+    createdAt: string;
+    reason: string;
+  }>;
 }
 
 export interface Faculty {

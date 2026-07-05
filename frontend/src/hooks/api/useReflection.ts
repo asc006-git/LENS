@@ -18,22 +18,22 @@ export function useUpdateReflectionSection() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      reflectionId,
+      sessionId,
       sectionId,
       content,
     }: {
-      reflectionId: string;
+      sessionId: string;
       sectionId: string;
       content: string;
     }) => {
       const { data: res } = await apiClient.put(
-        API_ENDPOINTS.REFLECTIONS.UPDATE_SECTION(reflectionId, sectionId),
+        API_ENDPOINTS.REFLECTIONS.UPDATE_SECTION(sessionId, sectionId),
         { content }
       );
       return res.data || res;
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['reflections'] });
+      queryClient.invalidateQueries({ queryKey: ['reflections', variables.sessionId] });
     },
   });
 }

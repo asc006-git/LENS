@@ -18,25 +18,15 @@ export function useConfirmBlueprint() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ blueprintId, confirmed }: { blueprintId: string; confirmed: boolean }) => {
-      const { data: res } = await apiClient.post(API_ENDPOINTS.BLUEPRINTS.CONFIRM(blueprintId), { confirmed });
+      const { data: res } = await apiClient.put(
+        `${API_ENDPOINTS.SESSIONS.BLUEPRINT(blueprintId)}/confirm`,
+        { confirmed }
+      );
       return res.data || res;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['blueprints', variables.blueprintId] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
-    },
-  });
-}
-
-export function useUpdateBlueprint() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ blueprintId, updates }: { blueprintId: string; updates: Partial<Blueprint> }) => {
-      const { data: res } = await apiClient.put(API_ENDPOINTS.BLUEPRINTS.UPDATE(blueprintId), updates);
-      return res.data || res;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['blueprints', variables.blueprintId] });
     },
   });
 }

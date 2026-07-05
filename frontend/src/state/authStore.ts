@@ -4,6 +4,20 @@ import { AuthState, User } from '@/types';
 import apiClient from '@/api/client';
 import { API_ENDPOINTS } from '@/api/endpoints';
 
+const mapBackendUser = (backendUser: any): User | null => {
+  if (!backendUser) return null;
+  const nameParts = (backendUser.name || '').trim().split(/\s+/);
+  return {
+    ...backendUser,
+    id: backendUser.id || backendUser._id,
+    firstName: backendUser.firstName || nameParts[0] || '',
+    lastName: backendUser.lastName || nameParts.slice(1).join(' ') || '',
+    role: backendUser.role,
+    createdAt: backendUser.createdAt,
+    updatedAt: backendUser.updatedAt,
+  };
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -19,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
           const { data: response } = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { email, password });
           const result = response.data || response;
           set({
-            user: result.user,
+            user: mapBackendUser(result.user),
             token: result.accessToken || result.token,
             refreshToken: result.refreshToken,
             isAuthenticated: true,
@@ -34,10 +48,21 @@ export const useAuthStore = create<AuthState>()(
       register: async (registerData) => {
         set({ isLoading: true });
         try {
-          const { data: response } = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, registerData);
+          // Map frontend RegisterData (firstName/lastName) to backend expects (name)
+          const name = `${registerData.firstName} ${registerData.lastName}`.trim();
+          const backendRegisterData = {
+            name,
+            email: registerData.email,
+            password: registerData.password,
+            role: registerData.role,
+            institution: registerData.institution,
+            department: registerData.department,
+          };
+
+          const { data: response } = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, backendRegisterData);
           const result = response.data || response;
           set({
-            user: result.user,
+            user: mapBackendUser(result.user),
             token: result.accessToken || result.token,
             refreshToken: result.refreshToken,
             isAuthenticated: true,

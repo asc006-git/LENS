@@ -26,6 +26,15 @@ export const API_ENDPOINTS = {
     FACULTY: '/api/v1/faculty/dashboard',
     INSTITUTION: '/api/v1/institution/dashboard',
   },
+  COURSES: {
+    BASE: '/api/v1/courses',
+    BY_ID: (id: string) => `/api/v1/courses/${id}`,
+    ENROLL: (id: string) => `/api/v1/courses/${id}/enroll`,
+    ENROLL_STUDENT: (id: string) => `/api/v1/courses/${id}/enroll-student`,
+    ASSIGNMENTS: (id: string) => `/api/v1/courses/${id}/assignments`,
+    ASSIGNMENT_BY_ID: (courseId: string, assignmentId: string) => `/api/v1/courses/${courseId}/assignments/${assignmentId}`,
+    ASSIGNMENT_MINE: '/api/v1/courses/assignments/mine',
+  },
   FACULTY: {
     COURSES: '/api/v1/faculty/courses',
     COURSE_BY_ID: (id: string) => `/api/v1/faculty/courses/${id}`,
@@ -35,6 +44,7 @@ export const API_ENDPOINTS = {
     INTERVENTIONS: '/api/v1/faculty/interventions',
     INSIGHTS: '/api/v1/faculty/insights',
     REPORTS: '/api/v1/faculty/reports',
+    IMPACT: '/api/v1/faculty/impact',
   },
   RECOMMENDATIONS: {
     BASE: '/api/v1/recommendations',
@@ -58,6 +68,7 @@ export const API_ENDPOINTS = {
   REFLECTIONS: {
     BASE: '/api/v1/reflection',
     BY_SESSION: (id: string) => `/api/v1/reflection/${id}`,
+    UPDATE_SECTION: (sessionId: string, sectionId: string) => `/api/v1/reflection/${sessionId}/sections/${sectionId}`,
   },
   ACHIEVEMENTS: {
     BASE: '/api/v1/achievements',

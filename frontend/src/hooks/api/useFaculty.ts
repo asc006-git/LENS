@@ -39,8 +39,8 @@ export function useConceptHeatmap() {
   return useQuery<ConceptHeatmapData[]>({
     queryKey: ['faculty', 'concept-heatmap'],
     queryFn: async () => {
-      const { data: res } = await apiClient.get(API_ENDPOINTS.FACULTY.ANALYTICS);
-      return res.data || res;
+      const { data: res } = await apiClient.get(API_ENDPOINTS.DASHBOARD.FACULTY);
+      return (res.data?.conceptHeatmap) || [];
     },
   });
 }
@@ -73,6 +73,71 @@ export function useFacultyInsights() {
     queryKey: ['faculty', 'insights'],
     queryFn: async () => {
       const { data: res } = await apiClient.get(API_ENDPOINTS.FACULTY.INSIGHTS);
+      return res.data || res;
+    },
+  });
+}
+
+export function useCreateCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { name: string; code: string; description?: string; semester?: string }) => {
+      const { data: res } = await apiClient.post(API_ENDPOINTS.COURSES.BASE, data);
+      return res.data || res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['faculty', 'courses'] });
+    },
+  });
+}
+
+export function useCreateAssignment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, ...data }: { courseId: string; title: string; description?: string; dueDate?: string; expectedConcepts?: string[]; rubricCriteria?: string[]; learningObjectives?: string[]; facultyNotes?: string }) => {
+      const { data: res } = await apiClient.post(API_ENDPOINTS.COURSES.ASSIGNMENTS(courseId), data);
+      return res.data || res;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['faculty', 'courses', variables.courseId] });
+      queryClient.invalidateQueries({ queryKey: ['faculty', 'assignments', variables.courseId] });
+    },
+  });
+}
+
+export function useEnrollStudent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ courseId, email }: { courseId: string; email: string }) => {
+      const { data: res } = await apiClient.post(API_ENDPOINTS.COURSES.ENROLL_STUDENT(courseId), { email });
+      return res.data || res;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['faculty', 'courses', variables.courseId] });
+    },
+  });
+}
+
+export function useCourseAssignments(courseId: string) {
+  return useQuery({
+    queryKey: ['faculty', 'assignments', courseId],
+    queryFn: async () => {
+      const { data: res } = await apiClient.get(API_ENDPOINTS.COURSES.ASSIGNMENTS(courseId));
+      return res.data || res;
+    },
+    enabled: !!courseId,
+  });
+}
+
+export function useFacultyImpact(startDate?: string, endDate?: string) {
+  return useQuery({
+    queryKey: ['faculty', 'impact', startDate, endDate],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      const qs = params.toString();
+      const { data: res } = await apiClient.get(`${API_ENDPOINTS.FACULTY.IMPACT}${qs ? `?${qs}` : ''}`);
       return res.data || res;
     },
   });
