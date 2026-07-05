@@ -15,6 +15,12 @@ interface BlueprintPromptData {
   topicClassification: string;
   difficultyEstimate: number;
   learningObjectives: string[];
+  facultyExpectations?: {
+    expectedConcepts?: string[];
+    rubricCriteria?: string[];
+    learningObjectives?: string[];
+    facultyNotes?: string;
+  };
 }
 
 interface ValidationPromptData {
@@ -50,6 +56,10 @@ interface ReflectionPromptData {
   }>;
   overallConfidence: number;
   overallUnderstanding: string;
+  priorSessionPatterns?: {
+    conceptConsistency: Array<{ concept: string; priorTendency: string }>;
+    confidenceTrend: 'improving' | 'declining' | 'stable';
+  };
 }
 
 interface ReportPromptData {
@@ -77,6 +87,10 @@ interface RecommendationPromptData {
   }>;
   strengths: string[];
   growthOpportunities: string[];
+  conceptualConsistency?: {
+    consistency: 'high' | 'medium' | 'low';
+    description: string;
+  };
 }
 
 export class PromptManager {
@@ -116,21 +130,35 @@ Respond only with valid JSON.`;
       .map((c) => `- ${c.name} (difficulty: ${c.difficulty}, bloomLevel: ${c.bloomLevel})`)
       .join('\n');
 
+    let facultyContext = '';
+    if (data.facultyExpectations) {
+      if (data.facultyExpectations.expectedConcepts?.length) {
+        facultyContext += `\nFACULTY-EXPECTED CONCEPTS: ${data.facultyExpectations.expectedConcepts.join(', ')}`;
+      }
+      if (data.facultyExpectations.rubricCriteria?.length) {
+        facultyContext += `\nRUBRIC CRITERIA: ${data.facultyExpectations.rubricCriteria.join(', ')}`;
+      }
+      if (data.facultyExpectations.facultyNotes) {
+        facultyContext += `\nFACULTY NOTES: ${data.facultyExpectations.facultyNotes}`;
+      }
+    }
+
     return `You are an expert learning designer. Create a learning blueprint based on the analyzed concepts.
+Map each concept to its Bloom's Taxonomy level and describe what understanding at that level looks like.
 
 ANALYZED CONCEPTS:
 ${conceptsList}
 
 TOPIC: ${data.topicClassification}
 OVERALL DIFFICULTY: ${data.difficultyEstimate}
-LEARNING OBJECTIVES: ${data.learningObjectives.join(', ')}
+LEARNING OBJECTIVES: ${data.learningObjectives.join(', ')}${facultyContext}
 
 Create a comprehensive learning blueprint with the following JSON structure:
 {
   "concepts": [
     {
       "name": "concept name",
-      "description": "detailed description",
+      "description": "detailed description of what understanding this concept means",
       "weight": 0.2,
       "order": 1
     }
@@ -144,7 +172,7 @@ Create a comprehensive learning blueprint with the following JSON structure:
   "difficulty": "medium"
 }
 
-Ensure concepts are ordered logically with dependencies properly mapped.
+Ensure concepts are ordered logically with dependencies properly mapped. Weight reflects relative importance (sum ≈ 1).
 Estimated time should be in minutes.
 Respond only with valid JSON.`;
   }
@@ -155,7 +183,7 @@ Respond only with valid JSON.`;
       .map((r) => `Concept: ${r.concept}, Response: ${r.response}, Confidence: ${r.confidence}`)
       .join('\n');
 
-    return `You are an expert educator creating validation questions to assess student understanding.
+    return `You are an expert educator assessing conceptual understanding. Generate a question that requires the student to explain a concept in their own words and demonstrate reasoning.
 
 CONCEPT TO VALIDATE: ${data.concept}
 DESCRIPTION: ${data.description}
@@ -163,20 +191,25 @@ DIFFICULTY LEVEL: ${data.difficulty}
 
 ${previousContext ? `PREVIOUS RESPONSES FOR CONTEXT:\n${previousContext}` : ''}
 
-Generate a validation question to assess the student's understanding of this concept.
+Generate one validation question. Choose the most appropriate type based on the concept:
+- "explain": ask the student to describe the concept in their own words
+- "summarize": ask the student to condense key points about the concept
+- "connect": ask the student to relate this concept to another concept
+- "analyze": ask the student to break down a problem using this concept
 
 Provide a JSON response with the following structure:
 {
-  "question": "the validation question",
-  "options": ["option1", "option2", "option3", "option4"],
-  "hints": ["hint1", "hint2"]
+  "question": "the open-ended validation question",
+  "type": "explain" | "summarize" | "connect" | "analyze",
+  "expectedInsights": ["key point the student should mention", "another key insight"],
+  "scaffoldingHint": "gentle prompt if the student struggles to start"
 }
 
 The question should:
-- Test deep understanding, not just memorization
+- Require the student to demonstrate reasoning, not recall facts
+- Be open-ended — there is no single correct answer, but certain insights are expected
 - Be appropriate for the difficulty level
-- Have one correct answer and plausible distractors
-- Include helpful hints for struggling students
+- Never be a multiple-choice or true/false question
 
 Respond only with valid JSON.`;
   }
@@ -187,30 +220,30 @@ Respond only with valid JSON.`;
       .map((r) => `Question: ${r.question}\nResponse: ${r.response}\nConfidence: ${r.confidence}`)
       .join('\n\n');
 
-    return `You are a supportive learning assistant providing hints for a struggling student.
+    return `You are a supportive learning assistant providing scaffolding for a struggling student.
 
 CONCEPT: ${data.concept}
 
 ${previousContext ? `STUDENT'S PREVIOUS ATTEMPTS:\n${previousContext}` : 'No previous attempts recorded.'}
 
-Provide helpful hints that guide the student toward understanding without giving away the answer.
+Provide progressive hints that guide the student toward constructing their own understanding. Never give away the answer.
 
 Provide a JSON response with the following structure:
 {
   "hints": [
     {
       "level": 1,
-      "hint": "subtle hint",
-      "explanation": "why this hint helps"
+      "hint": "subtle nudge toward the key idea",
+      "explanation": "why this nudge helps"
     },
     {
       "level": 2,
-      "hint": "more direct hint",
+      "hint": "more direct hint connecting to prior knowledge",
       "explanation": "why this hint helps"
     },
     {
       "level": 3,
-      "hint": "almost direct answer",
+      "hint": "almost direct explanation but framed as a question",
       "explanation": "why this hint helps"
     }
   ]
@@ -226,47 +259,57 @@ Respond only with valid JSON.`;
       .map((r) => `${r.concept}: ${r.understanding} (confidence: ${r.confidence})`)
       .join('\n');
 
-    return `You are an expert learning coach helping a student reflect on their learning journey.
+    let consistencySection = '';
+    if (data.priorSessionPatterns) {
+      consistencySection = `\nCROSS-SESSION PATTERNS:
+- Confidence trend: ${data.priorSessionPatterns.confidenceTrend}
+- Concept-level tendencies: ${data.priorSessionPatterns.conceptConsistency.map(c => `${c.concept} (${c.priorTendency})`).join(', ')}`;
+    }
+
+    return `You are an expert learning coach providing constructive, supportive feedback. Evaluate the student's demonstrated understanding against the learning blueprint — do NOT assess for AI use. Focus on conceptual ownership.
 
 CONCEPTS COVERED: ${conceptsList}
 OVERALL CONFIDENCE: ${data.overallConfidence}
 UNDERSTANDING LEVEL: ${data.overallUnderstanding}
 
 VALIDATION RESPONSES SUMMARY:
-${responseSummary}
+${responseSummary}${consistencySection}
 
-Generate a comprehensive reflection with the following JSON structure:
+Generate a reflection with two mandatory sections plus conceptual consistency assessment.
+
+CONCEPTUAL CONSISTENCY: Compare the student's explanations against the blueprint expectations. Flag potential gaps neutrally as areas for growth, never as accusations.
+
+Provide a JSON response with the following structure:
 {
   "sections": [
     {
       "title": "What I Learned",
-      "content": "detailed reflection content",
+      "content": "encouraging summary of demonstrated understanding",
       "type": "summary"
     },
     {
-      "title": "Key Insights",
-      "content": "key insights from the learning session",
-      "type": "insights"
-    },
-    {
-      "title": "Challenges Faced",
-      "content": "challenges and how they were addressed",
-      "type": "challenges"
+      "title": "Areas to Strengthen",
+      "content": "neutral description of concepts where understanding could deepen",
+      "type": "growth_areas"
     },
     {
       "title": "Next Steps",
-      "content": "recommended next steps for continued learning",
+      "content": "actionable suggestions for continued learning",
       "type": "action_items"
     },
     {
       "title": "Self-Assessment",
-      "content": "honest self-assessment of understanding",
+      "content": "prompt for the student to reflect on their own understanding",
       "type": "self_assessment"
     }
-  ]
+  ],
+  "conceptualConsistency": {
+    "consistency": "high"|"medium"|"low",
+    "description": "neutral explanation of the consistency level without judgment"
+  }
 }
 
-Make the reflection personalized and encouraging.
+Be supportive and constructive. Flag inconsistencies neutrally as growth opportunities.
 Respond only with valid JSON.`;
   }
 
@@ -279,7 +322,7 @@ Respond only with valid JSON.`;
       .map((r) => `${r.concept}: confidence ${r.confidence}`)
       .join('\n');
 
-    return `You are an expert learning analyst creating a comprehensive learning report.
+    return `You are an expert learning analyst creating a constructive learning report that measures conceptual ownership, not AI detection. Scores reflect depth of reasoning and explanation quality.
 
 CONCEPTS ANALYZED: ${data.concepts.map((c) => c.name).join(', ')}
 OVERALL CONFIDENCE: ${data.overallConfidence}
@@ -307,7 +350,12 @@ Generate a detailed learning report with the following JSON structure:
   "recommendations": ["recommendation1", "recommendation2"]
 }
 
-Provide honest, constructive feedback.
+Notes:
+- learningAuthenticity: based on reasoning coherence and conceptual ownership, NOT AI detection
+- confidenceIndex: based on demonstrated understanding, not self-reported confidence
+- strengths and growthOpportunities: frame neutrally, always pair a growth area with a strength
+
+Provide honest, constructive feedback that supports learning.
 Respond only with valid JSON.`;
   }
 
@@ -320,12 +368,17 @@ Respond only with valid JSON.`;
       .filter(([, mastery]) => mastery >= 0.7)
       .map(([concept]) => concept);
 
-    return `You are an expert learning designer creating personalized recommendations.
+    let consistencyNote = '';
+    if (data.conceptualConsistency) {
+      consistencyNote = `\nCONCEPTUAL CONSISTENCY: ${data.conceptualConsistency.consistency} — ${data.conceptualConsistency.description}`;
+    }
+
+    return `You are a supportive learning guide creating personalized recommendations. The goal is to deepen conceptual understanding through guided learning — never punitive or remedial in tone.
 
 STRONG CONCEPTS: ${strongConcepts.join(', ') || 'None identified yet'}
 CONCEPTS NEEDING IMPROVEMENT: ${weakConcepts.join(', ') || 'None identified yet'}
 STRENGTHS: ${data.strengths.join(', ') || 'None identified yet'}
-GROWTH AREAS: ${data.growthOpportunities.join(', ') || 'None identified yet'}
+GROWTH AREAS: ${data.growthOpportunities.join(', ') || 'None identified yet'}${consistencyNote}
 
 Generate personalized learning recommendations with the following JSON structure:
 {
@@ -333,19 +386,21 @@ Generate personalized learning recommendations with the following JSON structure
     {
       "type": "video",
       "concept": "concept name",
-      "description": "activity description",
+      "description": "activity description that builds on what the student knows",
       "completed": false
     }
   ],
   "roadmap": [
-    "step1: description",
-    "step2: description",
+    "step1: description starting from current understanding",
+    "step2: description building on step1",
     "step3: description"
   ]
 }
 
-Activity types can be: video, reading, practice, quiz, interactive, project
-Include 5-10 activities tailored to the student's needs.
+For concepts needing improvement: suggest practice activities and simplified explanations.
+For strong concepts: suggest application/connection activities to deepen understanding.
+Activity types can be: video, reading, practice, quiz, interactive, project, reflection
+Include 5-10 activities. Frame everything as supportive growth opportunities.
 Respond only with valid JSON.`;
   }
 }
