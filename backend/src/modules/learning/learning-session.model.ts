@@ -43,6 +43,12 @@ export interface ILearningSession extends Document {
   validation: {
     startedAt?: Date;
     completedAt?: Date;
+    questions?: Array<{
+      concept: string;
+      question: string;
+      type: string;
+      expectedAnswerPoints: string[];
+    }>;
     responses: Array<{
       concept: string;
       question: string;
@@ -93,6 +99,8 @@ export interface ILearningSession extends Document {
     resumePoint: string;
     deviceInfo: string;
   };
+  assignmentMismatchReason?: string;
+  errorMessage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -163,6 +171,12 @@ const learningSessionSchema = new Schema<ILearningSession>(
     validation: {
       startedAt: { type: Date },
       completedAt: { type: Date },
+      questions: [{
+        concept: { type: String },
+        question: { type: String },
+        type: { type: String },
+        expectedAnswerPoints: [{ type: String }],
+      }],
       responses: [
         {
           concept: { type: String },
@@ -224,6 +238,11 @@ const learningSessionSchema = new Schema<ILearningSession>(
     timestamps: true,
   }
 );
+
+learningSessionSchema.add({
+  assignmentMismatchReason: { type: String },
+  errorMessage: { type: String },
+});
 
 learningSessionSchema.index({ student: 1, status: 1 });
 learningSessionSchema.index({ student: 1, createdAt: -1 });
