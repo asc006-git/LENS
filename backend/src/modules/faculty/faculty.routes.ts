@@ -6,8 +6,8 @@ const router = Router();
 
 router.get('/dashboard', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const dashboard = await FacultyService.getDashboard(req.user!._id.toString());
-    sendSuccess(res, 'Faculty dashboard retrieved', dashboard);
+    const data = await FacultyService.getDashboard(req.user!._id.toString());
+    sendSuccess(res, 'Faculty dashboard retrieved', data);
   } catch (error) {
     next(error);
   }
@@ -15,8 +15,8 @@ router.get('/dashboard', async (req: Request, res: Response, next: NextFunction)
 
 router.get('/courses', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const dashboard = await FacultyService.getDashboard(req.user!._id.toString());
-    sendSuccess(res, 'Courses retrieved', dashboard.recentSessions);
+    const courses = await FacultyService.getFacultyCourses(req.user!._id.toString());
+    sendSuccess(res, 'Courses retrieved', courses);
   } catch (error) {
     next(error);
   }
@@ -24,8 +24,8 @@ router.get('/courses', async (req: Request, res: Response, next: NextFunction) =
 
 router.get('/courses/:courseId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const analytics = await FacultyService.getCourseAnalytics(req.user!._id.toString(), req.params.courseId);
-    sendSuccess(res, 'Course analytics retrieved', analytics);
+    const detail = await FacultyService.getFacultyCourseDetail(req.user!._id.toString(), req.params.courseId);
+    sendSuccess(res, 'Course detail retrieved', detail);
   } catch (error) {
     next(error);
   }
@@ -79,7 +79,7 @@ router.get('/insights', async (req: Request, res: Response, next: NextFunction) 
 router.get('/reports', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const dashboard = await FacultyService.getDashboard(req.user!._id.toString());
-    sendSuccess(res, 'Reports retrieved', dashboard.stats);
+    sendSuccess(res, 'Reports retrieved', dashboard);
   } catch (error) {
     next(error);
   }
@@ -87,7 +87,8 @@ router.get('/reports', async (req: Request, res: Response, next: NextFunction) =
 
 router.get('/interventions', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    sendSuccess(res, 'Interventions retrieved', []);
+    const interventions = await FacultyService.getInterventions(req.user!._id.toString());
+    sendSuccess(res, 'Interventions retrieved', interventions);
   } catch (error) {
     next(error);
   }
@@ -95,8 +96,7 @@ router.get('/interventions', async (req: Request, res: Response, next: NextFunct
 
 router.post('/interventions', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { studentId, type, message, concepts } = req.body;
-    const intervention = await FacultyService.createIntervention(req.user!._id.toString(), studentId, { type, message, concepts });
+    const intervention = await FacultyService.createIntervention(req.user!._id.toString(), req.body);
     sendSuccess(res, 'Intervention created', intervention, 201);
   } catch (error) {
     next(error);
