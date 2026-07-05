@@ -1,110 +1,234 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, GraduationCap } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { Sparkles, Eye, EyeOff, ArrowRight, GraduationCap, Users, CheckCircle2, Brain, Target, BookOpen } from 'lucide-react';
+import { useAuthStore } from '../../state/authStore';
 import toast from 'react-hot-toast';
+import api from '../../api/client';
+
+const benefits = [
+  { icon: Brain, text: 'AI-powered learning intelligence' },
+  { icon: Target, text: 'Adaptive concept validation' },
+  { icon: BookOpen, text: 'Personalized growth tracking' },
+];
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', password: '', confirmPassword: '', role: 'student' as 'student' | 'faculty',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const { register, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { register } = useAuthStore();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '', email: '', password: '', confirmPassword: '',
+    role: 'student' as 'student' | 'faculty',
+    institution: '', department: '',
+  });
+
+  const passwordStrength = (() => {
+    const p = formData.password;
+    if (!p) return { level: 0, label: '', color: '' };
+    let score = 0;
+    if (p.length >= 8) score++;
+    if (/[A-Z]/.test(p)) score++;
+    if (/[0-9]/.test(p)) score++;
+    if (/[^A-Za-z0-9]/.test(p)) score++;
+    const levels = [
+      { level: 1, label: 'Weak', color: 'bg-rose-500' },
+      { level: 2, label: 'Fair', color: 'bg-amber-500' },
+      { level: 3, label: 'Good', color: 'bg-emerald-400' },
+      { level: 4, label: 'Strong', color: 'bg-emerald-500' },
+    ];
+    return levels[score - 1] || { level: 0, label: '', color: '' };
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.password !== form.confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    setIsLoading(true);
     try {
+      const nameParts = formData.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
       await register({
-        name: `${form.firstName} ${form.lastName}`,
-        email: form.email,
-        password: form.password,
-        role: form.role,
+        firstName,
+        lastName,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        institution: formData.institution,
+        department: formData.department,
       });
-      toast.success('Account created successfully!');
-      navigate(form.role === 'faculty' ? '/faculty/dashboard' : '/student/dashboard');
-    } catch (error) {
-      toast.error('Registration failed');
+
+      const user = useAuthStore.getState().user;
+      if (user) {
+        toast.success('Account created! Welcome to LENS.');
+        if (user.role === 'faculty') {
+          navigate('/faculty/dashboard');
+        } else {
+          navigate('/student/dashboard');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateForm = (field: string, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
-
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-8">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-        <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-9 h-9 bg-primary-500 rounded-xl flex items-center justify-center">
-            <GraduationCap size={18} className="text-white" />
-          </div>
-          <span className="text-lg font-bold text-secondary-900">LENS</span>
-        </div>
+    <div className="min-h-screen bg-lens-navy flex">
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-5/12 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 via-cyan-600/15 to-lens-navy" />
+        <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-sage-500/15 rounded-full blur-3xl" />
+        
+        <div className="relative flex flex-col justify-center px-12 xl:px-16">
+          <Link to="/" className="flex items-center gap-2.5 mb-12">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-coral-500 to-amber-400 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-white">LENS</span>
+          </Link>
 
-        <h1 className="text-2xl font-bold text-secondary-900 mb-2 text-center">Create your account</h1>
-        <p className="text-secondary-500 mb-8 text-center">Start your authentic learning journey.</p>
+          <h2 className="text-3xl font-extrabold text-white leading-tight mb-4">
+            Begin Your{' '}
+            <span className="gradient-text-success">Learning Journey</span>
+          </h2>
+          <p className="text-stone-400 mb-10 max-w-md">
+            Create your account and start building authentic understanding with AI-guided learning.
+          </p>
 
-        <div className="flex bg-secondary-100 rounded-button p-1 mb-6">
-          {(['student', 'faculty'] as const).map((role) => (
-            <button key={role} onClick={() => updateForm('role', role)} className={`flex-1 py-2 text-sm font-medium rounded-[10px] transition-colors ${form.role === role ? 'bg-white text-secondary-900 shadow-sm' : 'text-secondary-500 hover:text-secondary-700'}`}>
-              {role.charAt(0).toUpperCase() + role.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1.5">First name</label>
-              <div className="relative">
-                <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
-                <input type="text" value={form.firstName} onChange={(e) => updateForm('firstName', e.target.value)} required className="w-full pl-10 pr-4 py-3 border border-secondary-200 rounded-button text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
+          <div className="space-y-4">
+            {benefits.map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-sage-500 shrink-0" />
+                <span className="text-sm text-stone-300">{text}</span>
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1.5">Last name</label>
-              <input type="text" value={form.lastName} onChange={(e) => updateForm('lastName', e.target.value)} required className="w-full px-4 py-3 border border-secondary-200 rounded-button text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
-            </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-12">
+        <div className="w-full max-w-lg">
+          <div className="lg:hidden text-center mb-8">
+            <Link to="/" className="inline-flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-coral-500 to-amber-400 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-white">LENS</span>
+            </Link>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1.5">Email</label>
-            <div className="relative">
-              <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
-              <input type="email" value={form.email} onChange={(e) => updateForm('email', e.target.value)} required className="w-full pl-10 pr-4 py-3 border border-secondary-200 rounded-button text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
+          <div className="glass-card p-8">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">Create Account</h1>
+              <p className="text-sm text-stone-400">Join the LENS learning ecosystem</p>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1.5">Password</label>
-            <div className="relative">
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
-              <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => updateForm('password', e.target.value)} required className="w-full pl-10 pr-12 py-3 border border-secondary-200 rounded-button text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600">
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {/* Role Selection */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {[
+                { role: 'student' as const, icon: GraduationCap, label: 'Student', desc: 'Learning workspace' },
+                { role: 'faculty' as const, icon: Users, label: 'Faculty', desc: 'Teaching intelligence' },
+              ].map(({ role, icon: Icon, label, desc }) => (
+                <button key={role} type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role }))}
+                  className={`p-4 rounded-xl border text-left transition-all ${
+                    formData.role === role
+                      ? 'border-coral-500/50 bg-coral-500/10'
+                      : 'border-white/5 bg-white/2 hover:border-white/15'
+                  }`}>
+                  <Icon className={`w-6 h-6 mb-2 ${formData.role === role ? 'text-coral-500' : 'text-stone-500'}`} />
+                  <p className={`text-sm font-semibold ${formData.role === role ? 'text-white' : 'text-stone-300'}`}>{label}</p>
+                  <p className="text-xs text-stone-500">{desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-400 mb-1.5">Full Name</label>
+                <input type="text" required value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="input-field" placeholder="Your full name" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-400 mb-1.5">Email Address</label>
+                <input type="email" required value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  className="input-field" placeholder="you@institution.edu" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-stone-400 mb-1.5">Institution</label>
+                  <input type="text" value={formData.institution}
+                    onChange={(e) => setFormData(prev => ({ ...prev, institution: e.target.value }))}
+                    className="input-field" placeholder="University" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-400 mb-1.5">Department</label>
+                  <input type="text" value={formData.department}
+                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                    className="input-field" placeholder="CS, ECE..." />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-400 mb-1.5">Password</label>
+                <div className="relative">
+                  <input type={showPassword ? 'text' : 'password'} required value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    className="input-field pr-10" placeholder="Min 8 characters" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {formData.password && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-1 rounded-full bg-lens-surface overflow-hidden">
+                      <div className={`h-full ${passwordStrength.color} transition-all`}
+                        style={{ width: `${passwordStrength.level * 25}%` }} />
+                    </div>
+                    <span className="text-xs text-stone-500">{passwordStrength.label}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-400 mb-1.5">Confirm Password</label>
+                <input type="password" required value={formData.confirmPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="input-field" placeholder="Re-enter password" />
+              </div>
+
+              <button type="submit" disabled={isLoading}
+                className="btn-primary w-full justify-center !py-3 disabled:opacity-50">
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>Create Account <ArrowRight className="w-5 h-5" /></>
+                )}
               </button>
-            </div>
+            </form>
+
+            <p className="text-center text-sm text-stone-400 mt-6">
+              Already have an account?{' '}
+              <Link to="/login" className="text-coral-500 hover:text-coral-400 font-medium">Sign In</Link>
+            </p>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1.5">Confirm password</label>
-            <input type="password" value={form.confirmPassword} onChange={(e) => updateForm('confirmPassword', e.target.value)} required className="w-full px-4 py-3 border border-secondary-200 rounded-button text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500" />
-          </div>
-
-          <button type="submit" disabled={isLoading} className="w-full py-3 bg-primary-500 text-white font-medium rounded-button hover:bg-primary-600 transition-colors disabled:opacity-50">
-            {isLoading ? 'Creating account...' : 'Create account'}
-          </button>
-        </form>
-
-        <p className="mt-8 text-center text-sm text-secondary-500">
-          Already have an account?{' '}
-          <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">Sign in</Link>
-        </p>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

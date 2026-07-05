@@ -1,36 +1,20 @@
 import { motion } from 'framer-motion';
-import { Users, BookOpen, TrendingUp, AlertTriangle, Activity, ArrowRight } from 'lucide-react';
+import { Users, BookOpen, TrendingUp, AlertTriangle, Activity, ArrowRight, Sparkles, Shield, Award } from 'lucide-react';
 import { useFacultyDashboard } from '@/hooks/api/useFaculty';
-import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
 import ConceptHeatmap from '@/components/charts/ConceptHeatmap';
-import Breadcrumb from '@/components/layout/Breadcrumb';
-
-interface ActivityItem {
-  id: string;
-  description: string;
-  studentName: string;
-  timestamp: string;
-}
-
-interface InterventionItem {
-  id: string;
-  title: string;
-  status: string;
-  targetStudents: { id: string }[];
-}
+import { Link } from 'react-router-dom';
 
 export default function FacultyDashboard() {
   const { data: dashboard, isLoading } = useFacultyDashboard();
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-secondary-100 rounded w-1/3" />
-          <div className="grid grid-cols-4 gap-4">
+          <div className="h-8 bg-white/5 rounded w-1/3" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 bg-secondary-100 rounded-[20px]" />
+              <div key={i} className="h-28 bg-white/5 rounded-2xl" />
             ))}
           </div>
         </div>
@@ -38,99 +22,141 @@ export default function FacultyDashboard() {
     );
   }
 
+  if (!dashboard) {
+    return (
+      <div className="max-w-7xl mx-auto text-center py-16">
+        <Users className="w-12 h-12 text-stone-500 mx-auto mb-4" />
+        <h2 className="text-lg font-semibold text-white mb-2">No data available</h2>
+        <p className="text-sm text-stone-400">No students or sessions found for your courses yet.</p>
+      </div>
+    );
+  }
+
   const stats = [
-    { label: 'Active Sessions', value: dashboard?.activeSessions || 0, icon: Activity, color: '#22C55E' },
-    { label: 'Total Students', value: dashboard?.totalStudents || 0, icon: Users, color: '#3B82F6' },
-    { label: 'Avg Authenticity', value: `${Math.round(dashboard?.averageAuthenticity || 0)}%`, icon: TrendingUp, color: '#8B5CF6' },
-    { label: 'Student Confidence', value: `${Math.round(dashboard?.studentConfidence || 0)}%`, icon: BookOpen, color: '#F59E0B' },
+    { label: 'Active Sessions', value: dashboard.activeSessions ?? 0, icon: Activity, color: 'text-sage-500', bg: 'bg-sage-500/10' },
+    { label: 'Total Students', value: dashboard.totalStudents ?? 0, icon: Users, color: 'text-coral-500', bg: 'bg-coral-500/10' },
+    { label: 'Avg Authenticity', value: `${Math.round(dashboard.averageAuthenticity ?? 0)}%`, icon: Shield, color: 'text-copper-400', bg: 'bg-amber-400/10' },
+    { label: 'Student Confidence', value: `${Math.round(dashboard.studentConfidence ?? 0)}%`, icon: Award, color: 'text-copper-400', bg: 'bg-copper-500/10' },
   ];
 
-  const recentActivity: ActivityItem[] = dashboard?.recentActivity || [];
-  const interventions: InterventionItem[] = dashboard?.interventions || [];
+  const recentActivity = dashboard.recentActivity || [];
+  const interventions = dashboard.interventions || [];
+  const conceptHeatmapData = dashboard.conceptHeatmap || [];
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <Breadcrumb items={[{ label: 'Faculty Dashboard' }]} />
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600/20 via-cyan-600/15 to-lens-navy border border-white/5 p-6 lg:p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-sage-500/10 rounded-full blur-3xl" />
+        <div className="relative">
+          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+            Classroom Learning Intelligence
+          </h1>
+          <p className="text-stone-400 max-w-lg">
+            Monitor conceptual understanding, authenticity, and student journeys across your courses in real-time.
+          </p>
+        </div>
+      </div>
 
-      <h1 className="text-2xl font-bold text-secondary-900 mb-8">Faculty Dashboard</h1>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
+            className="stat-card"
           >
-            <Card className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${stat.color}15` }}>
-                <stat.icon size={22} style={{ color: stat.color }} />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-secondary-900">{stat.value}</div>
-                <div className="text-xs text-secondary-500">{stat.label}</div>
+                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="text-xs text-stone-500 mt-1">{stat.label}</p>
               </div>
-            </Card>
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid lg:grid-cols-2 gap-6">
         {/* Concept Heatmap */}
-        <Card>
-          <h2 className="text-lg font-semibold text-secondary-900 mb-4">Concept Heatmap</h2>
-          <ConceptHeatmap data={dashboard?.conceptHeatmap || []} />
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <h2 className="text-lg font-semibold text-secondary-900 mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            {recentActivity.slice(0, 5).map((activity) => (
-              <div key={activity.id} className="flex items-start gap-3 p-3 bg-secondary-50 rounded-[16px]">
-                <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
-                  <Activity size={14} className="text-emerald-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-secondary-900">{activity.description}</p>
-                  <p className="text-xs text-secondary-500 mt-0.5">{activity.studentName} • {new Date(activity.timestamp).toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
-            {recentActivity.length === 0 && (
-              <p className="text-sm text-secondary-400 text-center py-4">No recent activity</p>
-            )}
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-white">Concept Heatmap</h2>
+            <span className="text-xs text-stone-500">Class average scores</span>
           </div>
-        </Card>
-      </div>
-
-      {/* Interventions */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-secondary-900">Active Interventions</h2>
-          <a href="/faculty/interventions" className="text-sm text-emerald-600 font-medium flex items-center gap-1 hover:text-emerald-700">
-            View all <ArrowRight size={14} />
-          </a>
-        </div>
-        <div className="space-y-3">
-          {interventions.filter((item) => item.status === 'active').slice(0, 3).map((intervention) => (
-            <div key={intervention.id} className="flex items-center justify-between p-4 border border-secondary-100 rounded-[16px]">
-              <div className="flex items-center gap-3">
-                <AlertTriangle size={16} className="text-amber-500" />
-                <div>
-                  <h4 className="text-sm font-medium text-secondary-900">{intervention.title}</h4>
-                  <p className="text-xs text-secondary-500">{intervention.targetStudents.length} students targeted</p>
-                </div>
-              </div>
-              <Badge variant="warning">{intervention.status}</Badge>
+          {conceptHeatmapData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-sm text-stone-500">
+              No concept data available yet
             </div>
-          ))}
-          {interventions.filter((item) => item.status === 'active').length === 0 && (
-            <p className="text-sm text-secondary-400 text-center py-4">No active interventions</p>
+          ) : (
+            <div className="h-64 flex items-center justify-center">
+              <ConceptHeatmap data={conceptHeatmapData} />
+            </div>
           )}
         </div>
-      </Card>
+
+        {/* Recent Activity */}
+        <div className="glass-card p-6">
+          <h2 className="text-sm font-semibold text-white mb-4">Recent Student Activity</h2>
+          {recentActivity.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-sm text-stone-500">
+              No activity recorded
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentActivity.map((activity: any) => (
+                <div key={activity.id} className="flex items-start gap-3 p-3 bg-white/2 border border-white/5 rounded-xl hover:border-white/10 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-sage-500/10 flex items-center justify-center text-sage-500 shrink-0">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-stone-200">{activity.description}</p>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      {activity.studentName} • {new Date(activity.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Active Interventions */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-white">Active Interventions Required</h2>
+          <Link to="/faculty/interventions" className="text-xs text-sage-500 hover:text-sage-400 flex items-center gap-1">
+            View all planner <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        {interventions.length === 0 ? (
+          <div className="py-6 text-center text-sm text-stone-500">
+            No active interventions needed
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {interventions.map((intervention: any) => (
+              <div key={intervention.id} className="flex items-center justify-between p-4 bg-white/2 border border-white/5 hover:border-white/10 transition-colors rounded-xl">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-stone-200">{intervention.title}</h4>
+                    <p className="text-xs text-stone-500 mt-0.5">{intervention.targetStudents?.length || 0} students need support</p>
+                  </div>
+                </div>
+                <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full ${
+                  intervention.status === 'active' ? 'bg-copper-500/10 text-copper-400' : 'bg-stone-500/10 text-stone-400'
+                } uppercase tracking-wider`}>
+                  {intervention.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

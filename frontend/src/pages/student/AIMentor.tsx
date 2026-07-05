@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Send, Bot, User, Sparkles } from 'lucide-react';
-import Card from '@/components/ui/Card';
-import Breadcrumb from '@/components/layout/Breadcrumb';
+import { useState, useRef, useEffect } from 'react';
+import { Sparkles, Send, User, Bot, Lightbulb } from 'lucide-react';
+import { mentorApiClient } from '@/api/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useLearningSessions } from '@/hooks/api/useLearningSession';
 
 interface Message {
   id: string;
@@ -11,128 +11,142 @@ interface Message {
   timestamp: Date;
 }
 
+const suggestions = [
+  'Explain AVL tree rotations step by step',
+  'What are the differences between BFS and DFS?',
+  'Help me understand Big-O notation',
+  'Quiz me on sorting algorithms',
+];
+
 export default function AIMentor() {
+  const { user } = useAuth();
+  const { data: sessions } = useLearningSessions();
+  const activeSession = sessions?.find(s => s.status !== 'completed' && s.status !== 'failed');
+
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
-      role: 'assistant',
-      content: "Hello! I'm your AI learning mentor. I can help you understand concepts, explain difficult topics, or guide your learning journey. What would you like to explore today?",
-      timestamp: new Date(),
+      id: '1', role: 'assistant', timestamp: new Date(),
+      content: `Hello! 👋 I'm your AI Learning Mentor. I can see you're studying${activeSession ? ` **${activeSession.title || 'a course'}**` : ''}. Ask me anything about your current concepts, or let's practice together!`,
     },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
+  const handleSend = async (text?: string) => {
+    const message = text || input.trim();
+    if (!message) return;
 
-    setMessages((prev) => [...prev, userMessage]);
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: message, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responses = [
-        "That's a great question! Let me break it down for you. The concept you're asking about relates to the fundamental principles we've been exploring. Would you like me to provide a specific example?",
-        "I understand your confusion. This concept often trips students up. The key is to think about it in terms of real-world applications. Here's a simple analogy...",
-        "Excellent thinking! You're connecting the dots well. To deepen your understanding, consider how this concept relates to what you learned in your previous session.",
-        "Let me explain this step by step. First, understand the core principle, then we'll build on that foundation. The relationship between these concepts is crucial.",
-      ];
+    try {
+      const { data: res } = await mentorApiClient.post('/api/v1/mentor/chat', {
+        message,
+        sessionId: activeSession?.id || null,
+        courseName: activeSession?.courseName || null,
+      });
+      const reply = res?.data?.response || res?.response || res?.message || "I'm sorry, I couldn't process that. Please try again.";
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: responses[Math.floor(Math.random() * responses.length)],
-        timestamp: new Date(),
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(), role: 'assistant', timestamp: new Date(),
+        content: reply,
       };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (err: any) {
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(), role: 'assistant', timestamp: new Date(),
+        content: `I'm sorry, I encountered an error: ${err.message || 'AI service unavailable'}. Please try again later.`,
+      };
+      setMessages(prev => [...prev, aiMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <Breadcrumb items={[{ label: 'AI Mentor' }]} />
-
-      <h1 className="text-2xl font-bold text-secondary-900 mb-2">AI Mentor</h1>
-      <p className="text-secondary-500 mb-6">Your contextual AI learning companion.</p>
-
-      <Card padding="none" className="h-[600px] flex flex-col">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {message.role === 'assistant' && (
-                <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center shrink-0">
-                  <Bot size={16} className="text-white" />
-                </div>
-              )}
-              <div className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm ${
-                message.role === 'user'
-                  ? 'bg-primary-500 text-white rounded-br-sm'
-                  : 'bg-secondary-100 text-secondary-900 rounded-bl-sm'
-              }`}>
-                {message.content}
-              </div>
-              {message.role === 'user' && (
-                <div className="w-8 h-8 bg-secondary-200 rounded-full flex items-center justify-center shrink-0">
-                  <User size={16} className="text-secondary-600" />
-                </div>
-              )}
-            </motion.div>
-          ))}
-          {isTyping && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
-                <Bot size={16} className="text-white" />
-              </div>
-              <div className="bg-secondary-100 rounded-2xl rounded-bl-sm px-4 py-3">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-secondary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            </div>
-          )}
+    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)]">
+      <div className="mb-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-400/10 border border-amber-400/20 mb-2">
+          <Sparkles className="w-3.5 h-3.5 text-copper-400" />
+          <span className="text-xs font-medium text-copper-400">AI Learning Mentor</span>
         </div>
+        <h1 className="text-xl font-bold text-white">AI Mentor Chat</h1>
+        <p className="text-xs text-stone-400">Ask questions, get explanations, and practice concepts interactively.</p>
+      </div>
 
-        {/* Input */}
-        <div className="border-t border-secondary-100 p-4">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Sparkles size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask your AI mentor anything..."
-                className="w-full pl-10 pr-4 py-3 bg-secondary-50 border border-secondary-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-              />
+      <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            {msg.role === 'assistant' && (
+              <div className="w-8 h-8 rounded-lg bg-amber-400/15 flex items-center justify-center shrink-0">
+                <Bot className="w-4 h-4 text-copper-400" />
+              </div>
+            )}
+            <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
+              msg.role === 'user'
+                ? 'bg-coral-500/15 border border-coral-500/20 text-stone-200'
+                : 'bg-white/3 border border-white/5 text-stone-300'
+            }`}>
+              {msg.content.split('\n').map((line, i) => (
+                <p key={i} className={`${i > 0 ? 'mt-2' : ''}`}>
+                  {line.split('**').map((part, j) =>
+                    j % 2 === 1 ? <strong key={j} className="text-white font-semibold">{part}</strong> : part
+                  )}
+                </p>
+              ))}
             </div>
-            <button
-              onClick={handleSend}
-              disabled={!input.trim()}
-              className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center hover:bg-primary-600 transition-colors disabled:opacity-50"
-            >
-              <Send size={16} />
-            </button>
+            {msg.role === 'user' && (
+              <div className="w-8 h-8 rounded-lg bg-coral-500/15 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-coral-500" />
+              </div>
+            )}
           </div>
+        ))}
+
+        {isTyping && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-400/15 flex items-center justify-center shrink-0">
+              <Bot className="w-4 h-4 text-copper-400" />
+            </div>
+            <div className="bg-white/3 border border-white/5 rounded-2xl p-4">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-stone-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-stone-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-stone-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {messages.length <= 1 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {suggestions.map((suggestion) => (
+            <button key={suggestion} onClick={() => handleSend(suggestion)}
+              className="px-3 py-1.5 rounded-full bg-white/3 border border-white/5 text-xs text-stone-400 hover:text-white hover:border-white/15 transition-colors flex items-center gap-1.5">
+              <Lightbulb className="w-3 h-3" /> {suggestion}
+            </button>
+          ))}
         </div>
-      </Card>
+      )}
+
+      <div className="flex gap-2">
+        <input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          className="input-field flex-1" placeholder="Ask your AI mentor anything..." />
+        <button onClick={() => handleSend()} disabled={!input.trim()}
+          className="btn-primary !px-4 disabled:opacity-40 disabled:cursor-not-allowed">
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

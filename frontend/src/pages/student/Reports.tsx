@@ -1,88 +1,112 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FileText, Download, Filter, Search } from 'lucide-react';
+import { FileText, ChevronRight, Calendar, Target, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 import { useAllReports } from '@/hooks/api/useReport';
-import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
-import EmptyState from '@/components/ui/EmptyState';
-import Breadcrumb from '@/components/layout/Breadcrumb';
-import { useState } from 'react';
 
 export default function Reports() {
   const { data: reports, isLoading } = useAllReports();
-  const [search, setSearch] = useState('');
 
-  const filtered = reports?.filter((r) =>
-    r.sessionId.toLowerCase().includes(search.toLowerCase())
-  );
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-16">
+        <Loader2 className="w-8 h-8 text-coral-500 mx-auto animate-spin mb-4" />
+        <p className="text-stone-400">Loading reports...</p>
+      </div>
+    );
+  }
+
+  const reportList = Array.isArray(reports) ? reports : [];
+
+  if (reportList.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-coral-500/10 border border-coral-500/20 mb-2">
+            <FileText className="w-3.5 h-3.5 text-coral-500" />
+            <span className="text-xs font-medium text-coral-400">Learning Reports</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white">Your Learning Reports</h1>
+          <p className="text-sm text-stone-400">View detailed reports from all your completed learning sessions.</p>
+        </div>
+        <div className="glass-card p-12 text-center">
+          <AlertCircle className="w-12 h-12 text-stone-500 mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-white mb-2">No reports yet</h2>
+          <p className="text-sm text-stone-400 mb-4">Complete a learning session to generate your first report.</p>
+          <Link to="/student/learning/new" className="btn-primary text-sm">Start Learning Session</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const avgAuthenticity = Math.round(reportList.reduce((sum: number, r: any) => sum + (r.authenticityScore || 0), 0) / reportList.length);
+  const avgMastery = Math.round(reportList.reduce((sum: number, r: any) => sum + (r.conceptMastery?.overall || 0), 0) / reportList.length);
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <Breadcrumb items={[{ label: 'Reports' }]} />
-
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-secondary-900">Learning Reports</h1>
-          <p className="text-secondary-500">All your learning authenticity reports.</p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-coral-500/10 border border-coral-500/20 mb-2">
+          <FileText className="w-3.5 h-3.5 text-coral-500" />
+          <span className="text-xs font-medium text-coral-400">Learning Reports</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search reports..."
-              className="pl-9 pr-4 py-2 border border-secondary-200 rounded-button text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-            />
-          </div>
+        <h1 className="text-2xl font-bold text-white">Your Learning Reports</h1>
+        <p className="text-sm text-stone-400">View detailed reports from all your completed learning sessions.</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="stat-card text-center">
+          <FileText className="w-6 h-6 text-coral-500 mx-auto mb-2" />
+          <p className="text-xl font-bold text-white">{reportList.length}</p>
+          <p className="text-[10px] text-stone-500">Total Reports</p>
+        </div>
+        <div className="stat-card text-center">
+          <TrendingUp className="w-6 h-6 text-sage-500 mx-auto mb-2" />
+          <p className="text-xl font-bold text-white">{avgAuthenticity}%</p>
+          <p className="text-[10px] text-stone-500">Avg Authenticity</p>
+        </div>
+        <div className="stat-card text-center">
+          <Target className="w-6 h-6 text-copper-400 mx-auto mb-2" />
+          <p className="text-xl font-bold text-white">{avgMastery}%</p>
+          <p className="text-[10px] text-stone-500">Avg Mastery</p>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 bg-secondary-100 rounded-card animate-pulse" />
-          ))}
-        </div>
-      ) : filtered?.length ? (
-        <div className="space-y-3">
-          {filtered.map((report, i) => (
-            <motion.div
-              key={report.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-            >
-              <Link to={`/student/learning/${report.sessionId}/report`}>
-                <Card hover className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center">
-                      <FileText size={18} className="text-primary-600" />
+      <div className="space-y-2">
+        {reportList.map((report: any) => {
+          const sessionId = report.sessionId || report.id;
+          const title = report.title || `Session ${sessionId?.slice(-6) || ''}`;
+          const date = report.generatedAt || report.createdAt;
+          const authenticity = report.authenticityScore || 0;
+          const mastery = report.conceptMastery?.overall || 0;
+
+          return (
+            <Link key={report.id || report._id} to={`/student/learning/${sessionId}/report`}
+              className="glass-card p-4 flex items-center justify-between group hover:border-white/15 transition-all">
+              <div className="flex items-center gap-4">
+                <div className={`w-2 h-2 rounded-full ${authenticity >= 80 ? 'bg-emerald-400' : authenticity >= 60 ? 'bg-amber-400' : 'bg-rose-400'}`} />
+                <div>
+                  <p className="text-sm font-medium text-stone-200 group-hover:text-white transition-colors">{title}</p>
+                  {date && (
+                    <div className="flex items-center gap-2 text-xs text-stone-500 mt-0.5">
+                      <Calendar className="w-3 h-3" />
+                      <span>{new Date(date).toLocaleDateString()}</span>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-secondary-900">Report #{i + 1}</h4>
-                      <p className="text-xs text-secondary-500">Session: {report.sessionId}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge variant={report.authenticityScore >= 70 ? 'success' : report.authenticityScore >= 40 ? 'warning' : 'error'}>
-                      {report.authenticityScore}% authenticity
-                    </Badge>
-                    <span className="text-xs text-secondary-400">{new Date(report.generatedAt).toLocaleDateString()}</span>
-                  </div>
-                </Card>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          title="No reports yet"
-          description="Complete learning sessions to generate your first authenticity report."
-          action={<Link to="/student/learning/new" className="text-sm text-primary-600 font-medium">Start a session</Link>}
-        />
-      )}
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm font-bold text-white">{authenticity}%</p>
+                  <p className="text-[10px] text-stone-500">Authenticity</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-coral-500">{mastery}%</p>
+                  <p className="text-[10px] text-stone-500">Mastery</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-stone-600 group-hover:text-coral-500 transition-colors" />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
