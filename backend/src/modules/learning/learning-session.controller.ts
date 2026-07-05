@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import LearningSessionService from './learning-session.service';
 import { sendSuccess } from '../../common/utils/response';
+import { DocumentAnalysisService } from './document-analysis.service';
+import ValidationService from '../validation/validation.service';
+import ReflectionService from '../reflection/reflection.service';
 
 export class LearningSessionController {
   static async createSession(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -16,13 +19,7 @@ export class LearningSessionController {
     try {
       const { id } = req.params;
       const files = req.files as Express.Multer.File[];
-      const fileData = files.map((f) => ({
-        name: f.originalname,
-        url: f.path || f.filename,
-        size: f.size,
-        type: f.mimetype,
-      }));
-      const session = await LearningSessionService.uploadFiles(id, req.user!._id.toString(), fileData);
+      const session = await LearningSessionService.uploadFiles(id, req.user!._id.toString(), files);
       sendSuccess(res, 'Files uploaded successfully', session);
     } catch (error) {
       next(error);
@@ -32,7 +29,21 @@ export class LearningSessionController {
   static async startAnalysis(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const session = await LearningSessionService.startAnalysis(req.params.id, req.user!._id.toString());
-      sendSuccess(res, 'Analysis started', session);
+      sendSuccess(res, 'Analysis completed', session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async uploadAndAnalyze(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const files = req.files as Express.Multer.File[];
+      const session = await LearningSessionService.uploadFiles(id, req.user!._id.toString(), files);
+      LearningSessionService.runFullAnalysisPipeline(id, req.user!._id.toString(), files).catch(err => {
+        console.error('Background analysis failed:', err.message);
+      });
+      res.status(202).json({ success: true, message: 'Analysis queued', data: session });
     } catch (error) {
       next(error);
     }
@@ -74,10 +85,37 @@ export class LearningSessionController {
     }
   }
 
+  static async evaluateAnswer(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await ValidationService.submitAndEvaluateAnswer(
+        req.params.id,
+        req.user!._id.toString(),
+        req.body
+      );
+      sendSuccess(res, 'Answer evaluated', result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async generateReflection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const session = await LearningSessionService.generateReflection(req.params.id, req.user!._id.toString(), req.body);
       sendSuccess(res, 'Reflection generated', session);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async analyzeFreeTextReflection(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { reflectionText } = req.body;
+      const result = await ReflectionService.analyzeFreeTextReflection(
+        req.params.id,
+        req.user!._id.toString(),
+        reflectionText
+      );
+      sendSuccess(res, 'Reflection analyzed', result);
     } catch (error) {
       next(error);
     }
