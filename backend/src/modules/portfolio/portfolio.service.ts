@@ -32,6 +32,18 @@ export class PortfolioService {
       });
     });
 
+    const streak = this.computeStreak(sessions);
+
+    const dna = await this.getLearningDNA(studentId);
+    const reflectionLibrary = sessions
+      .filter((s) => s.reflection && s.reflection.sections && s.reflection.sections.length > 0)
+      .map((s) => ({
+        id: s._id.toString(),
+        sessionTitle: s.learningObjective || 'Untitled Session',
+        date: s.createdAt.toISOString(),
+        content: s.reflection.sections.map((sec) => sec.content).filter(Boolean).join('\n') || '',
+      }));
+
     return {
       student: {
         id: user._id,
@@ -43,6 +55,7 @@ export class PortfolioService {
         totalConcepts,
         averageConfidence,
         totalStudyTime: sessions.reduce((sum, s) => sum + (s.blueprint.estimatedTime || 0), 0),
+        streak,
       },
       conceptMastery,
       recentSessions: sessions.slice(0, 5).map((s) => ({
@@ -52,6 +65,14 @@ export class PortfolioService {
         confidence: s.validation.overallConfidence,
         completedAt: s.updatedAt,
       })),
+      learningDNA: {
+        primaryStyle: dna.learningStyle,
+        secondaryStyle: 'visual',
+        strengths: Object.keys(conceptMastery).filter((c) => conceptMastery[c] >= 80),
+        growthAreas: Object.keys(conceptMastery).filter((c) => conceptMastery[c] < 80),
+        learningPatterns: [],
+      },
+      reflectionLibrary,
     };
   }
 
@@ -80,6 +101,37 @@ export class PortfolioService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  private static computeStreak(sessions: any[]): number {
+    if (sessions.length === 0) return 0;
+    const dates = sessions
+      .map((s) => {
+        const d = new Date(s.updatedAt || s.createdAt);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      })
+      .filter((v, i, a) => a.indexOf(v) === i)
+      .sort((a, b) => b - a);
+
+    if (dates.length === 0) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+
+    const msPerDay = 86400000;
+    let streak = 0;
+    for (let i = 0; i < dates.length; i++) {
+      const expected = todayMs - streak * msPerDay;
+      if (dates[i] === expected) {
+        streak++;
+      } else if (streak === 0 && dates[i] === todayMs - msPerDay) {
+        streak = 1;
+      } else {
+        break;
+      }
+    }
+    return streak;
   }
 
   static async getLearningDNA(studentId: string) {

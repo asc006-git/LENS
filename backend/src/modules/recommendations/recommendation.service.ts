@@ -3,6 +3,7 @@ import { AIModule, ActivityType } from '../../common/enums';
 import { AIProcessingError, NotFoundError } from '../../common/errors';
 import LLMAdapter from '../../ai/adapters/llm-adapter';
 import PromptManager from '../../ai/prompts/prompt-manager';
+import { AiDebugLog } from '../../ai/models/ai-debug-log.model';
 
 export class RecommendationService {
   static async generateRecommendations(sessionId: string, studentId: string) {
@@ -11,12 +12,15 @@ export class RecommendationService {
       throw new NotFoundError('Learning session');
     }
 
+    const conceptualConsistency = (session.reflection as any)?.conceptualConsistency || undefined;
+
     const prompt = PromptManager.createRecommendationPrompt({
       concepts: session.blueprint.concepts,
       conceptMastery: session.report.conceptMastery,
       validationResponses: session.validation.responses,
       strengths: session.report.strengths,
       growthOpportunities: session.report.growthOpportunities,
+      conceptualConsistency,
     });
 
     try {
@@ -64,12 +68,15 @@ export class RecommendationService {
       throw new NotFoundError('Learning session');
     }
 
+    const conceptualConsistency = (session.reflection as any)?.conceptualConsistency || undefined;
+
     const prompt = PromptManager.createRecommendationPrompt({
       concepts: session.blueprint.concepts.filter((c) => focusAreas.includes(c.name)),
       conceptMastery: session.report.conceptMastery,
       validationResponses: session.validation.responses,
       strengths: session.report.strengths,
       growthOpportunities: session.report.growthOpportunities,
+      conceptualConsistency,
     });
 
     try {
