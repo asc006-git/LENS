@@ -3,6 +3,7 @@ import { AIModule, ValidationStatus } from '../../common/enums';
 import { AIProcessingError, NotFoundError, AppError } from '../../common/errors';
 import LLMAdapter from '../../ai/adapters/llm-adapter';
 import PromptManager from '../../ai/prompts/prompt-manager';
+import { DocumentAnalysisService } from '../learning/document-analysis.service';
 
 export class ValidationService {
   static async startValidation(sessionId: string, studentId: string) {
@@ -17,6 +18,24 @@ export class ValidationService {
 
     session.validation.startedAt = new Date();
     session.validation.responses = [];
+
+    // Generate validation questions from blueprint concepts if not already stored
+    if (!session.validation.questions || session.validation.questions.length === 0) {
+      const questionsResult = await DocumentAnalysisService.generateValidationQuestions(sessionId, {
+        concepts: session.blueprint.concepts.map(c => ({
+          name: c.name,
+          difficulty: 'medium',
+          importance: c.weight,
+        })),
+        learningObjectives: session.blueprint.learningGoals,
+      });
+      session.validation.questions = questionsResult.questions.map(q => ({
+        concept: q.concept,
+        question: q.question,
+        type: q.type || 'explain',
+        expectedAnswerPoints: q.expectedAnswerPoints || [],
+      }));
+    }
 
     await session.save();
     return session.validation;
@@ -90,6 +109,64 @@ export class ValidationService {
 
     await session.save();
     return session.validation;
+  }
+
+  static async submitAndEvaluateAnswer(
+    sessionId: string,
+    studentId: string,
+    data: {
+      concept: string;
+      question: string;
+      studentAnswer: string;
+      expectedAnswerPoints: string[];
+      confidence: number;
+    }
+  ) {
+    const session = await LearningSession.findOne({ _id: sessionId, student: studentId });
+    if (!session) {
+      throw new NotFoundError('Learning session');
+    }
+
+    const evaluation = await DocumentAnalysisService.evaluateAnswer(
+      sessionId,
+      data.concept,
+      data.question,
+      data.studentAnswer,
+      data.expectedAnswerPoints
+    );
+
+    session.validation.responses.push({
+      concept: data.concept,
+      question: data.question,
+      response: data.studentAnswer,
+      understanding: evaluation.score >= 0.7 ? 'strong' : evaluation.score >= 0.4 ? 'moderate' : 'needs_improvement',
+      confidence: data.confidence,
+      hints: [],
+    });
+
+    const totalConfidence = session.validation.responses.reduce((sum, r) => sum + r.confidence, 0);
+    session.validation.overallConfidence = totalConfidence / session.validation.responses.length;
+
+    await session.save();
+    return { validation: session.validation, evaluation };
+  }
+
+  static async evaluateAnswerOnly(
+    sessionId: string,
+    data: {
+      concept: string;
+      question: string;
+      studentAnswer: string;
+      expectedAnswerPoints: string[];
+    }
+  ) {
+    return DocumentAnalysisService.evaluateAnswer(
+      sessionId,
+      data.concept,
+      data.question,
+      data.studentAnswer,
+      data.expectedAnswerPoints
+    );
   }
 
   static async getHint(sessionId: string, studentId: string, concept: string) {
