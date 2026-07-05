@@ -10,6 +10,7 @@ export enum SessionStatus {
   CONFIGURED = 'configured',
   UPLOADING = 'uploading',
   ANALYZING = 'analyzing',
+  ANALYSIS_FAILED = 'analysis_failed',
   BLUEPRINT_GENERATED = 'blueprint_generated',
   BLUEPRINT_CONFIRMED = 'blueprint_confirmed',
   VALIDATING = 'validating',
@@ -19,6 +20,7 @@ export enum SessionStatus {
   GUIDED_LEARNING = 'guided_learning',
   COMPLETED = 'completed',
   ARCHIVED = 'archived',
+  ASSIGNMENT_MISMATCH = 'assignment_mismatch',
 }
 
 export enum ValidationStatus {

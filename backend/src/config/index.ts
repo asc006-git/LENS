@@ -22,9 +22,15 @@ export const config = {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
 
+  groq: {
+    apiKey: process.env.GROQ_API_KEY || '',
+    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  },
+
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
-    model: process.env.GEMINI_MODEL || 'gemini-pro',
+    fallbackApiKey: process.env.GEMINI_API_KEY_FALLBACK || '',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   },
 
   openrouter: {
@@ -53,7 +59,7 @@ export const config = {
   },
 
   frontend: {
-    url: process.env.FRONTEND_URL || 'http://localhost:3000',
+    url: process.env.FRONTEND_URL || 'http://localhost:5173',
   },
 
   smtp: {
